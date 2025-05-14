@@ -1,0 +1,119 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Random;
+
+class RandomMathQuiz extends JFrame implements ActionListener {
+    private final JLabel questionLabel;
+    private final JTextField answerField;
+    private final JLabel feedbackLabel;
+
+    private final Random random;
+
+    // Use ArrayLists to store questions and their answers
+    private final ArrayList<String> questions;
+    private final ArrayList<Integer> answers;
+
+    public RandomMathQuiz() {
+        super("Random Math Question Generator");
+        random = new Random();
+        questions = new ArrayList<>();
+        answers = new ArrayList<>();
+
+        // Set up components
+        questionLabel = new JLabel("Click 'Next' to start.", SwingConstants.CENTER);
+        questionLabel.setFont(new Font("Arial", Font.BOLD, 18));
+
+        answerField = new JTextField(10);
+        answerField.setFont(new Font("Arial", Font.PLAIN, 16));
+
+        JButton submitButton = new JButton("Submit");
+        submitButton.setFont(new Font("Arial", Font.PLAIN, 16));
+        submitButton.addActionListener(this);
+        submitButton.setActionCommand("submit");
+
+        JButton nextButton = new JButton("Next");
+        nextButton.setFont(new Font("Arial", Font.PLAIN, 16));
+        nextButton.addActionListener(this);
+        nextButton.setActionCommand("next");
+
+        feedbackLabel = new JLabel(" ", SwingConstants.CENTER);
+        feedbackLabel.setFont(new Font("Arial", Font.ITALIC, 14));
+
+        // Layout setup
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(questionLabel, BorderLayout.CENTER);
+
+        JPanel middlePanel = new JPanel();
+        middlePanel.add(new JLabel("Your Answer: "));
+        middlePanel.add(answerField);
+        middlePanel.add(submitButton);
+
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(nextButton, BorderLayout.WEST);
+        bottomPanel.add(feedbackLabel, BorderLayout.CENTER);
+
+        getContentPane().setLayout(new BorderLayout(10, 10));
+        getContentPane().add(topPanel, BorderLayout.NORTH);
+        getContentPane().add(middlePanel, BorderLayout.CENTER);
+        getContentPane().add(bottomPanel, BorderLayout.SOUTH);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(400, 200);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void generateQuestion() {
+        int a = random.nextInt(20) + 1;   // 1 to 20
+        int b = random.nextInt(20) + 1;
+        char op;
+
+        int correctAnswer;
+        if (random.nextBoolean()) {
+            op = '+';
+            correctAnswer = a + b;
+        } else {
+            op = '-';
+            correctAnswer = a - b;
+        }
+
+        String question = String.format("%d %c %d = ?", a, op, b);
+        questions.add(question);
+        answers.add(correctAnswer);
+
+        questionLabel.setText(question);
+        answerField.setText("");
+        feedbackLabel.setText(" ");
+        answerField.requestFocusInWindow();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String cmd = e.getActionCommand();
+        if ("next".equals(cmd)) {
+            generateQuestion();
+        } else if ("submit".equals(cmd)) {
+            if (answers.isEmpty()) {
+                feedbackLabel.setText("Click 'Next' to get a question.");
+                return;
+            }
+            try {
+                int userAnswer = Integer.parseInt(answerField.getText().trim());
+                int latestAnswer = answers.getLast();
+                if (userAnswer == latestAnswer) {
+                    feedbackLabel.setText("Correct!");
+                } else {
+                    feedbackLabel.setText("Incorrect. Answer is " + latestAnswer);
+                }
+            } catch (NumberFormatException ex) {
+                feedbackLabel.setText("it says press next not submit");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(RandomMathQuiz::new);
+    }
+}
