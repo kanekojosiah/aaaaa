@@ -1,0 +1,187 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+class MathProblemGeneratorGUI extends JFrame {
+    private final JSpinner digitsSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 6, 1));
+    private final JSpinner countSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
+    private final JCheckBox additionCheck = new JCheckBox("Addition (+)");
+    private final JCheckBox subtractionCheck = new JCheckBox("Subtraction (-)");
+    private final JCheckBox multiplicationCheck = new JCheckBox("Multiplication (×)");
+    private final JCheckBox divisionCheck = new JCheckBox("Division (÷)");
+    private final JTextField answerField = new JTextField(10);
+    private final JLabel questionLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel progressLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel feedbackLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JButton nextButton = new JButton("Next Question");
+
+    private final List<Problem> problems = new ArrayList<>();
+    private final List<String> userInputs = new ArrayList<>();
+    private int currentQuestion = 0;
+    private int score = 0;
+
+    public MathProblemGeneratorGUI() {
+        initializeUI();
+    }
+
+    private void initializeUI() {
+        setTitle("Math Problem Generator");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+
+        JPanel controlPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        controlPanel.add(new JLabel("Digits per operand (1-6):"));
+        controlPanel.add(digitsSpinner);
+        controlPanel.add(new JLabel("Number of equations:"));
+        controlPanel.add(countSpinner);
+
+        JPanel operationsPanel = new JPanel();
+        operationsPanel.setBorder(BorderFactory.createTitledBorder("Operations"));
+        operationsPanel.add(additionCheck);
+        operationsPanel.add(subtractionCheck);
+        operationsPanel.add(multiplicationCheck);
+        operationsPanel.add(divisionCheck);
+
+        JPanel questionPanel = new JPanel(new BorderLayout(10, 10));
+        questionPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        questionPanel.add(progressLabel, BorderLayout.NORTH);
+        questionLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        questionPanel.add(questionLabel, BorderLayout.CENTER);
+        feedbackLabel.setFont(new Font("Arial", Font.ITALIC, 14));
+        questionPanel.add(feedbackLabel, BorderLayout.SOUTH);
+
+        JPanel answerPanel = new JPanel();
+        answerPanel.add(new JLabel("Your answer: "));
+        answerPanel.add(answerField);
+        nextButton.addActionListener(this::nextQuestion);
+        nextButton.setEnabled(false);
+        answerPanel.add(nextButton);
+
+        JButton generateButton = new JButton("Start New Quiz");
+        generateButton.addActionListener(this::generateProblems);
+
+        add(controlPanel, BorderLayout.NORTH);
+        add(operationsPanel, BorderLayout.WEST);
+        add(generateButton, BorderLayout.EAST);
+        add(questionPanel, BorderLayout.CENTER);
+        add(answerPanel, BorderLayout.SOUTH);
+
+        setSize(500, 350);
+        setLocationRelativeTo(null);
+    }
+
+    private void generateProblems(ActionEvent e) {
+        boolean add = additionCheck.isSelected();
+        boolean sub = subtractionCheck.isSelected();
+        boolean mul = multiplicationCheck.isSelected();
+        boolean div = divisionCheck.isSelected();
+        if (!add && !sub && !mul && !div) {
+            JOptionPane.showMessageDialog(this, "Please select at least one operation!");
+            return;
+        }
+        problems.clear();
+        userInputs.clear();
+        problems.addAll(generateQuestionList(
+                (int) digitsSpinner.getValue(),
+                (int) countSpinner.getValue(),
+                add, sub, mul, div
+        ));
+        currentQuestion = 0;
+        score = 0;
+        feedbackLabel.setText(" ");
+        nextButton.setEnabled(true);
+        showQuestion(0);
+    }
+
+    private void showQuestion(int index) {
+        if (index >= problems.size()) return;
+        Problem p = problems.get(index);
+        progressLabel.setText(String.format("Question %d/%d", index + 1, problems.size()));
+        questionLabel.setText(String.format("%d %s %d =", p.a(), p.operation(), p.b()));
+        answerField.setText("");
+        answerField.requestFocus();
+        feedbackLabel.setText(" ");
+    }
+
+    private void nextQuestion(ActionEvent e) {
+        Problem current = problems.get(currentQuestion);
+        String input = answerField.getText().trim();
+        userInputs.add(input.isEmpty() ? "(no answer)" : input);
+        String feedback;
+        try {
+            int userAnswer = Integer.parseInt(input);
+            if (userAnswer == current.answer()) {
+                feedback = "Correct! Ans: " + current.answer();
+                score++;
+            } else {
+                feedback = "Incorrect. Ans: " + current.answer();
+            }
+        } catch (NumberFormatException ex) {
+            feedback = "Invalid input. Ans: " + current.answer();
+        }
+        feedbackLabel.setText(feedback);
+        currentQuestion++;
+        if (currentQuestion < problems.size()) {
+            showQuestion(currentQuestion);
+        } else {
+            feedbackLabel.setText(" ");
+            showResults();
+            nextButton.setEnabled(false);
+        }
+    }
+
+    private void showResults() {
+        StringBuilder results = new StringBuilder("Final Score: " + score + "/" + problems.size() + "\n\n");
+        for (int i = 0; i < problems.size(); i++) {
+            Problem p = problems.get(i);
+            String userAns = userInputs.get(i);
+            boolean correct = userAns.matches("-?\\d+") && Integer.parseInt(userAns) == p.answer();
+            results.append(String.format("%d. %d %s %d = %d   Your answer: %s [%s]\n",
+                    i + 1, p.a(), p.operation(), p.b(), p.answer(),
+                    userAns, correct ? "Correct" : "Incorrect"));
+        }
+        JOptionPane.showMessageDialog(this, results.toString());
+    }
+
+    private List<Problem> generateQuestionList(int digits, int count,
+                                               boolean add, boolean sub, boolean mul, boolean div) {
+        List<Problem> questions = new ArrayList<>();
+        Random random = new Random();
+        int min = (int) Math.pow(10, digits - 1);
+        int max = (int) Math.pow(10, digits) - 1;
+        for (int i = 0; i < count; i++) {
+            String op = getRandomOperation(add, sub, mul, div, random);
+            int a, b, ans;
+            switch (op) {
+                case "+": a = rand(min,max,random); b = rand(min,max,random); ans = a+b; break;
+                case "-": a = rand(min,max,random); b = rand(min,max,random);
+                    if(b>a){int t=a;a=b;b=t;} ans=a-b; break;
+                case "×": a = rand(min,max,random); b = rand(min,max,random); ans = a*b; break;
+                case "÷": b = rand(min,max,random); int m = random.nextInt(max/b)+1; a=b*m; ans=a/b; break;
+                default: a=b=ans=0;
+            }
+            questions.add(new Problem(a,b,op,ans));
+        }
+        return questions;
+    }
+
+    private int rand(int min, int max, Random r) {
+        return r.nextInt(max-min+1)+min;
+    }
+
+    private String getRandomOperation(boolean add, boolean sub, boolean mul, boolean div, Random random) {
+        List<String> ops = new ArrayList<>();
+        if (add) ops.add("+"); if (sub) ops.add("-"); if (mul) ops.add("×"); if (div) ops.add("÷");
+        return ops.get(random.nextInt(ops.size()));
+    }
+
+    private record Problem(int a, int b, String operation, int answer) {}
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new MathProblemGeneratorGUI().setVisible(true));
+    }
+}
