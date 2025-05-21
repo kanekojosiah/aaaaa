@@ -1,0 +1,215 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.util.*;
+import java.util.List;
+
+class MathProblemGeneratorGUI extends JFrame {
+    private final JSpinner digitsSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 6, 1));
+    private final JSpinner countSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 20, 1));
+    private final JCheckBox additionCheck = new JCheckBox("Addition (+)");
+    private final JCheckBox subtractionCheck = new JCheckBox("Subtraction (-)");
+    private final JCheckBox multiplicationCheck = new JCheckBox("Multiplication (×)");
+    private final JCheckBox divisionCheck = new JCheckBox("Division (÷)");
+    private final JTextField answerField = new JTextField(10);
+    private final JLabel questionLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel progressLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel feedbackLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JButton nextButton = new JButton("Next Question");
+    private final JButton generateButton = new JButton("Start New Quiz");
+
+    // Use a LinkedHashSet to both deduce and preserve insertion order:
+    private Set<Problem> problems = new LinkedHashSet<>();
+    // Map each Problem → user’s answer, in the same order:
+    private final Map<Problem, String> userInputs = new LinkedHashMap<>();
+
+    private Iterator<Problem> iterator;
+    private Problem currentProblem;
+    private int score = 0;
+
+    public MathProblemGeneratorGUI() {
+        initializeUI();
+    }
+
+    private void initializeUI() {
+        setTitle("Math Problem Generator");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+
+        JPanel controlPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        controlPanel.add(new JLabel("Digits per operand (1-6):"));
+        controlPanel.add(digitsSpinner);
+        controlPanel.add(new JLabel("Number of equations:"));
+        controlPanel.add(countSpinner);
+
+        JPanel operationsPanel = new JPanel();
+        operationsPanel.setBorder(BorderFactory.createTitledBorder("Operations"));
+        operationsPanel.add(additionCheck);
+        operationsPanel.add(subtractionCheck);
+        operationsPanel.add(multiplicationCheck);
+        operationsPanel.add(divisionCheck);
+
+        JPanel questionPanel = new JPanel(new BorderLayout(10, 10));
+        questionPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        questionPanel.add(progressLabel, BorderLayout.NORTH);
+        questionLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        questionPanel.add(questionLabel, BorderLayout.CENTER);
+        feedbackLabel.setFont(new Font("Arial", Font.ITALIC, 14));
+        questionPanel.add(feedbackLabel, BorderLayout.SOUTH);
+
+        JPanel answerPanel = new JPanel();
+        answerPanel.add(new JLabel("Your answer: "));
+        answerPanel.add(answerField);
+        nextButton.addActionListener(this::nextQuestion);
+        nextButton.setEnabled(false);
+        answerPanel.add(nextButton);
+
+        generateButton.addActionListener(this::generateProblems);
+
+        add(controlPanel, BorderLayout.NORTH);
+        add(operationsPanel, BorderLayout.WEST);
+        add(generateButton, BorderLayout.EAST);
+        add(questionPanel, BorderLayout.CENTER);
+        add(answerPanel, BorderLayout.SOUTH);
+
+        setSize(550, 380);
+        setLocationRelativeTo(null);
+    }
+
+    private void generateProblems(ActionEvent e) {
+        if (!(additionCheck.isSelected() || subtractionCheck.isSelected()
+                || multiplicationCheck.isSelected() || divisionCheck.isSelected())) {
+            JOptionPane.showMessageDialog(this, "Please select at least one operation!");
+            return;
+        }
+
+        // Generate into a LinkedHashSet to deduce while preserving order:
+        Set<Problem> generated = new LinkedHashSet<>();
+        int needed = (int) countSpinner.getValue();
+        Random rnd = new Random();
+        int digits = (int) digitsSpinner.getValue();
+        int min = (int) Math.pow(10, digits - 1);
+        int max = (int) Math.pow(10, digits) - 1;
+
+        while (generated.size() < needed) {
+            String op = getRandomOperation(
+                    additionCheck.isSelected(),
+                    subtractionCheck.isSelected(),
+                    multiplicationCheck.isSelected(),
+                    divisionCheck.isSelected(),
+                    rnd
+            );
+            int a, b, ans;
+            switch (op) {
+                case "+":
+                    a = rand(min, max, rnd);
+                    b = rand(min, max, rnd);
+                    ans = a + b;
+                    break;
+                case "-":
+                    a = rand(min, max, rnd);
+                    b = rand(min, max, rnd);
+                    if (b > a) { int t = a; a = b; b = t; }
+                    ans = a - b;
+                    break;
+                case "×":
+                    a = rand(min, max, rnd);
+                    b = rand(min, max, rnd);
+                    ans = a * b;
+                    break;
+                case "÷":
+                    b = rand(min, max, rnd);
+                    int m = rnd.nextInt(max / b + 1) + 1;
+                    a = b * m;
+                    ans = a / b;
+                    break;
+                default:
+                    continue;
+            }
+            generated.add(new Problem(a, b, op, ans));
+        }
+
+        problems = generated;
+        userInputs.clear();
+        score = 0;
+        iterator = problems.iterator();
+        nextButton.setEnabled(true);
+        showNextQuestion();
+    }
+
+    private void showNextQuestion() {
+        if (!iterator.hasNext()) {
+            showResults();
+            nextButton.setEnabled(false);
+            return;
+        }
+        currentProblem = iterator.next();
+        int qIndex = userInputs.size() + 1;
+        progressLabel.setText("Question " + qIndex + " / " + problems.size());
+        questionLabel.setText(
+                String.format("%d %s %d =", currentProblem.a(), currentProblem.operation(), currentProblem.b())
+        );
+        feedbackLabel.setText(" ");
+        answerField.setText("");
+        answerField.requestFocus();
+    }
+
+    private void nextQuestion(ActionEvent e) {
+        String input = answerField.getText().trim();
+        userInputs.put(currentProblem, input.isEmpty() ? "(no answer)" : input);
+
+        String fb;
+        try {
+            int userAns = Integer.parseInt(input);
+            if (userAns == currentProblem.answer()) {
+                score++;
+                fb = "Correct! Ans: " + currentProblem.answer();
+            } else {
+                fb = "Incorrect. Ans: " + currentProblem.answer();
+            }
+        } catch (NumberFormatException ex) {
+            fb = "Invalid input. Ans: " + currentProblem.answer();
+        }
+        feedbackLabel.setText(fb);
+
+        // Move on:
+        SwingUtilities.invokeLater(this::showNextQuestion);
+    }
+
+    private void showResults() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("Final Score: %d / %d%n%n", score, problems.size()));
+        int i = 1;
+        for (Problem p : userInputs.keySet()) {
+            String ans = userInputs.get(p);
+            boolean correct = ans.matches("-?\\d+") && Integer.parseInt(ans) == p.answer();
+            sb.append(String.format(
+                    "%d. %d %s %d = %d   Your answer: %s [%s]%n",
+                    i++, p.a(), p.operation(), p.b(), p.answer(),
+                    ans, correct ? "Correct" : "Incorrect"
+            ));
+        }
+        JOptionPane.showMessageDialog(this, sb.toString());
+    }
+
+    private int rand(int min, int max, Random r) {
+        return r.nextInt(max - min + 1) + min;
+    }
+
+    private String getRandomOperation(
+            boolean add, boolean sub, boolean mul, boolean div, Random random) {
+        List<String> ops = new ArrayList<>();
+        if (add) ops.add("+");
+        if (sub) ops.add("-");
+        if (mul) ops.add("×");
+        if (div) ops.add("÷");
+        return ops.get(random.nextInt(ops.size()));
+    }
+
+    private record Problem(int a, int b, String operation, int answer) {}
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new MathProblemGeneratorGUI().setVisible(true));
+    }
+}
