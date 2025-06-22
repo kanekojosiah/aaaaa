@@ -1,65 +1,55 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.util.ArrayList;      // ← missing import
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Random;
 
 class MathProblemGeneratorGUI_linkedlist extends JFrame {
     private final JSpinner operandDigitsSpinner = new JSpinner(new SpinnerNumberModel(2, 1, Integer.MAX_VALUE, 1));
-    private final JSpinner questionsSpinner     = new JSpinner(new SpinnerNumberModel(5, 1, Integer.MAX_VALUE, 1));
-    private final JSpinner operandCountSpinner  = new JSpinner(new SpinnerNumberModel(2, 2, 10, 1));
-
-    private final JCheckBox additionCheck       = new JCheckBox("Addition (+)");
-    private final JCheckBox subtractionCheck    = new JCheckBox("Subtraction (-)");
+    private final JSpinner questionsSpinner = new JSpinner(new SpinnerNumberModel(5, 1, Integer.MAX_VALUE, 1));
+    private final JSpinner operandCountSpinner = new JSpinner(new SpinnerNumberModel(2, 2, 10, 1));
+    private final JCheckBox additionCheck = new JCheckBox("Addition (+)");
+    private final JCheckBox subtractionCheck = new JCheckBox("Subtraction (-)");
     private final JCheckBox multiplicationCheck = new JCheckBox("Multiplication (×)");
-    private final JCheckBox divisionCheck       = new JCheckBox("Division (÷)");
-    private final JCheckBox mixedCheck          = new JCheckBox("Mixed (Random)");
+    private final JCheckBox divisionCheck = new JCheckBox("Division (÷)");
+    private final JCheckBox mixedCheck = new JCheckBox("Mixed (Random)");
+    private final JTextField answerField = new JTextField(10);
+    private final JLabel questionLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel progressLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel feedbackLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JButton nextButton = new JButton("Next Question");
+    private final JButton generateButton = new JButton("Start New Quiz");
 
-    private final JTextField answerField        = new JTextField(10);
-    private final JLabel questionLabel          = new JLabel(" ", SwingConstants.CENTER);
-    private final JLabel progressLabel          = new JLabel(" ", SwingConstants.CENTER);
-    private final JLabel feedbackLabel          = new JLabel(" ", SwingConstants.CENTER);
-
-    private final JButton nextButton            = new JButton("Next Question");
-    private final JButton generateButton        = new JButton("Start New Quiz");
-
-    /* ──────────────── data ──────────────── */
-    private final List<Problem> problems  = new LinkedList<>();
-    private final List<String>  userInputs = new ArrayList<>();   // indexed same as problems
-
-    private final DefaultListModel<String> questionListModel = new DefaultListModel<>();
+    private final LinkedList<Problem> problems = new LinkedList<>();
+    private final LinkedList<String> userInputs = new LinkedList<>();
+    private DefaultListModel<String> questionListModel = new DefaultListModel<>();
     private JList<String> questionList;
-
     private int currentIndex = 0;
-    private int score        = 0;
+    private int score = 0;
 
-    /* ──────────────── ctor ──────────────── */
-    MathProblemGeneratorGUI_linkedlist() { initializeUI(); }
+    public MathProblemGeneratorGUI_linkedlist() {
+        initializeUI();
+    }
 
-    /* ─────────────────────────────────────── */
-    /*   U I   L A Y O U T                    */
-    /* ─────────────────────────────────────── */
     private void initializeUI() {
-
-        setTitle("Math Problem Generator");
+        setTitle("Math Problem Generator (LinkedList)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
 
-        /* left: list of questions */
         JPanel leftPanel = new JPanel(new BorderLayout());
         questionList = new JList<>(questionListModel);
         questionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         questionList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 currentIndex = questionList.getSelectedIndex();
-                if (currentIndex >= 0 && currentIndex < problems.size()) showSelectedQuestion();
+                if (currentIndex >= 0 && currentIndex < problems.size()) {
+                    showSelectedQuestion();
+                }
             }
         });
-        leftPanel.add(new JScrollPane(questionList), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(questionList);
+        leftPanel.add(scrollPane, BorderLayout.CENTER);
 
-        /* north: spinners */
         JPanel controlPanel = new JPanel(new GridLayout(0, 2, 5, 5));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         controlPanel.add(new JLabel("Number of Digits per operand (min 1):"));
@@ -69,23 +59,22 @@ class MathProblemGeneratorGUI_linkedlist extends JFrame {
         controlPanel.add(new JLabel("Number of Operands (min 2):"));
         controlPanel.add(operandCountSpinner);
 
-        /* operations check‑boxes */
         JPanel operationsPanel = new JPanel();
         operationsPanel.setBorder(BorderFactory.createTitledBorder("Operations"));
+        operationsPanel.setLayout(new BoxLayout(operationsPanel, BoxLayout.Y_AXIS));
         operationsPanel.add(additionCheck);
         operationsPanel.add(subtractionCheck);
         operationsPanel.add(multiplicationCheck);
         operationsPanel.add(divisionCheck);
         operationsPanel.add(mixedCheck);
         mixedCheck.addActionListener(e -> {
-            boolean mixed = mixedCheck.isSelected();
-            additionCheck.setEnabled(!mixed);
-            subtractionCheck.setEnabled(!mixed);
-            multiplicationCheck.setEnabled(!mixed);
-            divisionCheck.setEnabled(!mixed);
+            boolean isMixed = mixedCheck.isSelected();
+            additionCheck.setEnabled(!isMixed);
+            subtractionCheck.setEnabled(!isMixed);
+            multiplicationCheck.setEnabled(!isMixed);
+            divisionCheck.setEnabled(!isMixed);
         });
 
-        /* center: current question & feedback */
         JPanel questionPanel = new JPanel(new BorderLayout(10, 10));
         questionPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         questionPanel.add(progressLabel, BorderLayout.NORTH);
@@ -96,9 +85,8 @@ class MathProblemGeneratorGUI_linkedlist extends JFrame {
 
         JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
         centerPanel.add(operationsPanel, BorderLayout.NORTH);
-        centerPanel.add(questionPanel,   BorderLayout.CENTER);
+        centerPanel.add(questionPanel, BorderLayout.CENTER);
 
-        /* south: answer field */
         JPanel answerPanel = new JPanel();
         answerPanel.add(new JLabel("Your answer: "));
         answerPanel.add(answerField);
@@ -106,180 +94,245 @@ class MathProblemGeneratorGUI_linkedlist extends JFrame {
         nextButton.setEnabled(false);
         answerPanel.add(nextButton);
 
-        /* east: generate button */
         generateButton.addActionListener(this::generateProblems);
 
-        /* add to frame */
-        add(controlPanel,  BorderLayout.NORTH);
-        add(leftPanel,     BorderLayout.WEST);
-        add(centerPanel,   BorderLayout.CENTER);
-        add(generateButton,BorderLayout.EAST);
-        add(answerPanel,   BorderLayout.SOUTH);
+        add(controlPanel, BorderLayout.NORTH);
+        add(leftPanel, BorderLayout.WEST);
+        add(centerPanel, BorderLayout.CENTER);
+        add(generateButton, BorderLayout.EAST);
+        add(answerPanel, BorderLayout.SOUTH);
 
-        setSize(700, 420);
+        setSize(650, 400);
         setLocationRelativeTo(null);
     }
 
-    /* ─────────────────────────────────────── */
-    /*   Q U I Z   L O G I C                  */
-    /* ─────────────────────────────────────── */
-
     private void generateProblems(ActionEvent e) {
-
-        /* ensure at least one op chosen */
         if (!(additionCheck.isSelected() || subtractionCheck.isSelected()
                 || multiplicationCheck.isSelected() || divisionCheck.isSelected() || mixedCheck.isSelected())) {
             JOptionPane.showMessageDialog(this, "Please select at least one operation!");
             return;
         }
 
-        /* reset state */
+        int digits = (int) operandDigitsSpinner.getValue();
+        int operandCount = (int) operandCountSpinner.getValue();
+
+        // Prevent impossible multiplication settings
+        if ((multiplicationCheck.isSelected() || mixedCheck.isSelected()) && digits > 5) {
+            JOptionPane.showMessageDialog(this,
+                    "Multiplication with more than 5 digits per operand will always overflow.\n" +
+                            "Please select 5 or fewer digits for multiplication problems.",
+                    "Invalid Settings", JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
         problems.clear();
         userInputs.clear();
-        score = 0;
-
-        int totalQuestions = (int) questionsSpinner.getValue();
-        int digits         = (int) operandDigitsSpinner.getValue();
-        int operandCount   = (int) operandCountSpinner.getValue();
-
-        int min = (digits == 1) ? 0 : (int) Math.pow(10, digits - 1);
-        int max = (int) Math.pow(10, digits) - 1;
-
+        int needed = (int) questionsSpinner.getValue();
         Random rnd = new Random();
+
+        int min = (int) Math.pow(10, digits - 1);
+        int max = (int) Math.pow(10, digits) - 1;
+        if (digits == 1) min = 0;
+
         questionListModel.clear();
+        int maxAttempts = needed * 20;
+        int attempts = 0;
+        while (problems.size() < needed && attempts < maxAttempts) {
+            attempts++;
+            String op;
+            if (mixedCheck.isSelected()) {
+                op = getRandomOperation(true, true, true, true, rnd);
+            } else {
+                op = getRandomOperation(
+                        additionCheck.isSelected(),
+                        subtractionCheck.isSelected(),
+                        multiplicationCheck.isSelected(),
+                        divisionCheck.isSelected(),
+                        rnd
+                );
+            }
 
-        while (problems.size() < totalQuestions) {
-
-            /* decide operation */
-            String op = mixedCheck.isSelected()
-                    ? getRandomOperation(true, true, true, true, rnd)
-                    : getRandomOperation(
-                    additionCheck.isSelected(),
-                    subtractionCheck.isSelected(),
-                    multiplicationCheck.isSelected(),
-                    divisionCheck.isSelected(),
-                    rnd);
-
-            /* build operand list */
-            List<Integer> operands = new ArrayList<>(operandCount);
+            LinkedList<Integer> operands = new LinkedList<>();
             for (int i = 0; i < operandCount; i++) operands.add(rand(min, max, rnd));
 
-            /* compute result & build string */
             int result = operands.get(0);
+            boolean failed = false;
             StringBuilder sb = new StringBuilder(String.valueOf(operands.get(0)));
+            int opsDone = 0;
 
             for (int i = 1; i < operandCount; i++) {
                 int val = operands.get(i);
-
-                switch (op) {
-                    case "+" -> result += val;
-                    case "-" -> result -= val;
-                    case "×" -> {
-                        /* we allow multi‑operand × but avoid overflow by capping operands */
-                        result *= val;
+                try {
+                    switch (op) {
+                        case "+":
+                            result = Math.addExact(result, val);
+                            sb.append(" + ").append(val);
+                            opsDone++;
+                            break;
+                        case "-":
+                            result = Math.subtractExact(result, val);
+                            sb.append(" - ").append(val);
+                            opsDone++;
+                            break;
+                        case "×":
+                            result = Math.multiplyExact(result, val);
+                            sb.append(" × ").append(val);
+                            opsDone++;
+                            break;
+                        case "÷":
+                            if (val == 0) { failed = true; break; }
+                            if (result % val != 0) { failed = true; break; }
+                            result /= val;
+                            sb.append(" ÷ ").append(val);
+                            opsDone++;
+                            break;
                     }
-                    case "÷" -> {
-                        if (val == 0) { i--; continue; }   // regenerate operand if zero
-                        /* make dividend exactly divisible by val for integer result */
-                        int dividend = result * val;
-                        result = dividend / val;           // stays as 'result'
-                        operands.set(0, dividend);        // update first operand
-                    }
+                } catch (ArithmeticException ex) {
+                    failed = true;
+                    break;
                 }
-                sb.append(" ").append(op).append(" ").append(val);
+                if (failed) break;
             }
 
-            String qStr = sb.toString();
-            problems.add(new Problem(qStr, result));
-            questionListModel.addElement(qStr + " =");
-            userInputs.add("");                     // keep lists in‑sync
+            if (!failed && opsDone > 0) {
+                String questionString = sb.toString();
+                problems.add(new Problem(questionString, result));
+                questionListModel.addElement(questionString + " =");
+                userInputs.add("");
+            }
+        }
+
+        if (problems.size() < needed) {
+            JOptionPane.showMessageDialog(this,
+                    "Unable to generate quiz with these settings (too many overflows or impossible operations). " +
+                            "Try reducing the number of digits or operands, or avoid multiplication.",
+                    "Generation Failed", JOptionPane.ERROR_MESSAGE
+            );
+            nextButton.setEnabled(false);
+            return;
         }
 
         currentIndex = 0;
-        if (!problems.isEmpty()) {
-            questionList.setSelectedIndex(0);
-            nextButton.setEnabled(true);
-            showSelectedQuestion();
-        }
+        questionList.setSelectedIndex(0);
+        nextButton.setEnabled(true);
+        score = 0;
+        showSelectedQuestion();
     }
 
     private void showSelectedQuestion() {
-        if (currentIndex < 0 || currentIndex >= problems.size()) return;
-
-        Problem p = problems.get(currentIndex);
-        progressLabel.setText("Question " + (currentIndex + 1) + " / " + problems.size());
-        questionLabel.setText(p.q() + " =");
-        feedbackLabel.setText(" ");
-        answerField.setText(userInputs.get(currentIndex));
-        answerField.requestFocus();
+        if (currentIndex >= 0 && currentIndex < problems.size()) {
+            Problem p = problems.get(currentIndex);
+            progressLabel.setText("Question " + (currentIndex + 1) + " / " + problems.size());
+            questionLabel.setText(p.getQuestionString() + " = ?");
+            feedbackLabel.setText(" ");
+            answerField.setText(userInputs.get(currentIndex));
+            answerField.requestFocus();
+        }
     }
 
     private void nextQuestion(ActionEvent e) {
+        if (currentIndex >= 0 && currentIndex < problems.size()) {
+            Problem current = problems.get(currentIndex);
+            String input = answerField.getText().trim();
+            userInputs.set(currentIndex, input);
 
-        if (currentIndex < 0 || currentIndex >= problems.size()) return;
-
-        Problem current = problems.get(currentIndex);
-        String input = answerField.getText().trim();
-        userInputs.set(currentIndex, input.isEmpty() ? "(no answer)" : input);
-
-        String fb;
-        try {
-            int userAns = Integer.parseInt(input);
-            if (userAns == current.a()) {
-                score++;
-                fb = "Correct! Ans: " + current.a();
+            String fb;
+            int correctAns = current.getAnswer();
+            String correctAnsDisplay;
+            if (correctAns == Integer.MAX_VALUE) {
+                correctAnsDisplay = "Overflow (too big)";
+            } else if (correctAns == Integer.MIN_VALUE) {
+                correctAnsDisplay = "Underflow (too small/negative)";
             } else {
-                fb = "Incorrect. Ans: " + current.a();
+                correctAnsDisplay = String.valueOf(correctAns);
             }
-        } catch (NumberFormatException ex) {
-            fb = "Invalid input. Ans: " + current.a();
-        }
-        feedbackLabel.setText(fb);
 
-        if (currentIndex < problems.size() - 1) {
-            currentIndex++;
-            questionList.setSelectedIndex(currentIndex);
-            showSelectedQuestion();
-        } else {
-            showResults();
-            nextButton.setEnabled(false);
+            try {
+                int userAns = Integer.parseInt(input);
+                if (userAns == correctAns) {
+                    score++;
+                    fb = "Correct! Ans: " + correctAnsDisplay;
+                } else {
+                    fb = "Incorrect. Ans: " + correctAnsDisplay;
+                }
+            } catch (NumberFormatException ex) {
+                fb = "Invalid input. Ans: " + correctAnsDisplay;
+            }
+            feedbackLabel.setText(fb);
+
+            if (currentIndex < problems.size() - 1) {
+                currentIndex++;
+                questionList.setSelectedIndex(currentIndex);
+                showSelectedQuestion();
+            } else {
+                showResults();
+                nextButton.setEnabled(false);
+            }
         }
     }
 
     private void showResults() {
-        StringBuilder sb = new StringBuilder("Final Score: " + score + "/" + problems.size() + "\n\n");
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("Final Score: %d / %d%n%n", score, problems.size()));
         for (int i = 0; i < problems.size(); i++) {
             Problem p = problems.get(i);
             String ans = userInputs.get(i);
-            boolean correct = ans.matches("-?\\d+") && Integer.parseInt(ans) == p.a();
-            sb.append(String.format(
-                    "%d. %s = %d   Your answer: %s [%s]%n",
-                    i + 1, p.q(), p.a(), ans, correct ? "Correct" : "Incorrect"));
+            int correctAns = p.getAnswer();
+            String correctAnsDisplay;
+            if (correctAns == Integer.MAX_VALUE) {
+                correctAnsDisplay = "Overflow (too big)";
+            } else if (correctAns == Integer.MIN_VALUE) {
+                correctAnsDisplay = "Underflow (too small/negative)";
+            } else {
+                correctAnsDisplay = String.valueOf(correctAns);
+            }
+            boolean correct = ans.matches("-?\\d+") && Integer.parseInt(ans) == correctAns;
+            sb.append(String.format("%d. %s = %s   Your answer: %s [%s]%n",
+                    i + 1, p.getQuestionString(), correctAnsDisplay,
+                    ans.isEmpty() ? "(no answer)" : ans, correct ? "Correct" : "Incorrect"));
         }
         JOptionPane.showMessageDialog(this, sb.toString());
     }
 
-    /* ─────────────────────────────────────── */
-    /*   U T I L                              */
-    /* ─────────────────────────────────────── */
-    private int rand(int min, int max, Random r) { return r.nextInt(max - min + 1) + min; }
+    private int rand(int min, int max, Random r) {
+        return r.nextInt(max - min + 1) + min;
+    }
 
-    private String getRandomOperation(boolean add, boolean sub, boolean mul, boolean div, Random r) {
-        List<String> ops = new ArrayList<>();
+    private String getRandomOperation(boolean add, boolean sub, boolean mul, boolean div, Random random) {
+        LinkedList<String> ops = new LinkedList<>();
         if (add) ops.add("+");
         if (sub) ops.add("-");
         if (mul) ops.add("×");
         if (div) ops.add("÷");
-        return ops.get(r.nextInt(ops.size()));
+        if (ops.isEmpty()) {
+            return "+";
+        }
+        return ops.get(random.nextInt(ops.size()));
     }
 
-    /* ─────────────────────────────────────── */
-    /*   R E C O R D                          */
-    /* ─────────────────────────────────────── */
-    private record Problem(String q, int a) {}
+    private static class Problem {
+        private final String questionString;
+        private final int answer;
 
-    /* ─────────────────────────────────────── */
+        public Problem(String questionString, int answer) {
+            this.questionString = questionString;
+            this.answer = answer;
+        }
+
+        public String getQuestionString() {
+            return questionString;
+        }
+
+        public int getAnswer() {
+            return answer;
+        }
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MathProblemGeneratorGUI_linkedlist().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            MathProblemGeneratorGUI_linkedlist gui = new MathProblemGeneratorGUI_linkedlist();
+            gui.setVisible(true);
+        });
     }
 }
